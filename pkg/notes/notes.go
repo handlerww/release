@@ -693,10 +693,55 @@ func prsForCommitFromMessage(client *github.Client, commitMessage string, opts .
 		if err != nil {
 			return nil, err
 		}
+		// hack for https://github.com/pingcap/tidb-operator/issues/2070
+		// the PR contains only one commit, the "Squash and Merge" will use
+		// this commit message directly. In this case, we can't detect the
+		// original PR from the commit message. See examples:
+		// - https://github.com/pingcap/tidb-operator/pull/1865 (created by sre-bot)
+		// - https://github.com/pingcap/tidb-operator/pull/1587 (created by hack/cherry_pick_pull.sh)
+		if res.GetUser().GetLogin() == "sre-bot" || res.GetUser().GetLogin() == "ti-srebot" {
+			pr, err = originalOfSREBotCherryPickPR(res)
+			if err != nil {
+				return nil, err
+			}
+			res, _, err = client.PullRequests.Get(c.ctx, c.org, c.repo, pr)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			// PRs not created by sre-bot can be a cherry-pick PR too.
+			pr, err = originalOfOtherCherryPickPR(res)
+			if err == nil {
+				res, _, err = client.PullRequests.Get(c.ctx, c.org, c.repo, pr)
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
 		prs = append(prs, res)
 	}
 
 	return prs, err
+}
+
+func originalOfSREBotCherryPickPR(pr *github.PullRequest) (int, error) {
+	regex := regexp.MustCompile(`cherry-pick #(?P<number>\d+) to`)
+	prBody := pr.GetBody()
+	prID := prForRegex(regex, prBody)
+	if prID == 0 {
+		return 0, fmt.Errorf("can not find orginal PR for cherry-pick PR %d", pr.GetID)
+	}
+	return prID, nil
+}
+
+func originalOfOtherCherryPickPR(pr *github.PullRequest) (int, error) {
+	regex := regexp.MustCompile(`Cherry pick of #(?P<number>\d+) on`)
+	prBody := pr.GetBody()
+	prID := prForRegex(regex, prBody)
+	if prID == 0 {
+		return 0, fmt.Errorf("can not find orginal PR for cherry-pick PR %d", pr.GetID)
+	}
+	return prID, nil
 }
 
 func prsNumForCommitFromMessage(commitMessage string) (prs []int, err error) {
@@ -704,6 +749,13 @@ func prsNumForCommitFromMessage(commitMessage string) (prs []int, err error) {
 	// stops being true, this definitely won't work anymore.
 	regex := regexp.MustCompile(`Merge pull request #(?P<number>\d+)`)
 	pr := prForRegex(regex, commitMessage)
+	if pr != 0 {
+		prs = append(prs, pr)
+	}
+
+	// Squash merge of cherry pick PR created by hack/cherry_pick_pull.sh script.
+	regex = regexp.MustCompile(`Automated cherry pick of #(?P<number>\d+):`)
+	pr = prForRegex(regex, commitMessage)
 	if pr != 0 {
 		prs = append(prs, pr)
 	}
