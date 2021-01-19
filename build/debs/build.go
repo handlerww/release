@@ -599,8 +599,8 @@ func getCNIDownloadLink(packageDef packageDefinition, arch string) (string, erro
 	}
 
 	if sv.LTE(v075) {
-		return fmt.Sprintf("https://github.com/containernetworking/plugins/releases/download/v%s/cni-plugins-%s-v%s.tgz", packageDef.Version, arch, packageDef.Version), nil
+		return fmt.Sprintf("%s/containernetworking/plugins/releases/download/v%s/cni-plugins-%s-v%s.tgz", os.GetEnv("RELEASE_GH_HOST"), packageDef.Version, arch, packageDef.Version), nil
 	}
 
-	return fmt.Sprintf("https://github.com/containernetworking/plugins/releases/download/v%s/cni-plugins-linux-%s-v%s.tgz", packageDef.Version, arch, packageDef.Version), nil
+	return fmt.Sprintf("%s/containernetworking/plugins/releases/download/v%s/cni-plugins-linux-%s-v%s.tgz", os.GetEnv("RELEASE_GH_HOST"), packageDef.Version, arch, packageDef.Version), nil
 }

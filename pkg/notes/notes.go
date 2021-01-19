@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -342,8 +343,8 @@ func ReleaseNoteFromCommit(result *Result, client *github.Client, relVer string,
 	documentation := DocumentationFromString(prBody)
 
 	author := pr.GetUser().GetLogin()
-	authorURL := fmt.Sprintf("https://github.com/%s", author)
-	prURL := fmt.Sprintf("https://github.com/%s/%s/pull/%d", c.org, c.repo, pr.GetNumber())
+	authorURL := fmt.Sprintf("%s/%s", os.Getenv("RELEASE_GH_HOST"), author)
+	prURL := fmt.Sprintf("%s/%s/%s/pull/%d", os.Getenv("RELEASE_GH_HOST"), c.org, c.repo, pr.GetNumber())
 	IsFeature := HasString(LabelsWithPrefix(pr, "kind"), "feature")
 	IsDuplicate := false
 	sigsListPretty := prettifySigList(LabelsWithPrefix(pr, "sig"))

@@ -84,7 +84,7 @@ func CloneOrOpenGitHubRepo(path, owner, repo string, useSSH bool) (*Repo, error)
 			if useSSH {
 				return defaultGithubAuthRoot + slug
 			}
-			return fmt.Sprintf("https://github.com/%s", slug)
+			return fmt.Sprintf("%s/%s", os.Getenv("RELEASE_GH_HOST"), slug)
 		}(),
 		useSSH,
 	)
